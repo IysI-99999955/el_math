@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/el_math/static/css/main.2b5070c1.css",
-    "main.js": "/el_math/static/js/main.8f9598f9.js",
+    "main.js": "/el_math/static/js/main.2d3919ce.js",
     "index.html": "/el_math/index.html",
     "main.2b5070c1.css.map": "/el_math/static/css/main.2b5070c1.css.map",
-    "main.8f9598f9.js.map": "/el_math/static/js/main.8f9598f9.js.map"
+    "main.2d3919ce.js.map": "/el_math/static/js/main.2d3919ce.js.map"
   },
   "entrypoints": [
     "static/css/main.2b5070c1.css",
-    "static/js/main.8f9598f9.js"
+    "static/js/main.2d3919ce.js"
   ]
 }
