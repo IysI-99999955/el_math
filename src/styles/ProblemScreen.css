@@ -1,0 +1,191 @@
+/* src/styles/ProblemScreen.css */
+.problem-screen-container {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 50px;
+  background-color: #ffffff;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.problem-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 50px;
+  width: 80%;
+  max-width: 600px;
+}
+
+.problem-header {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 20px;
+  font-size: 1.2em;
+  color: #7f8c8d;
+}
+
+.timer {
+  font-weight: bold;
+  color: #34495e;
+}
+
+.timer.urgent {
+  color: #e74c3c;
+}
+
+.problem-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 3em;
+  font-weight: 700;
+  gap: 30px;
+  text-align: center;
+  width: 100%;
+}
+
+.problem-text {
+  word-break: keep-all;
+}
+
+.answer-input {
+  font-size: 0.5em;
+  padding: 15px;
+  width: 250px;
+  height: 50px;
+  text-align: center;
+  border: 2px solid #2acf15;
+  border-radius: 8px;
+  font-family: 'Noto Sans KR', sans-serif;
+  box-sizing: border-box;
+  -moz-appearance: textfield;
+}
+
+.answer-input:focus {
+  outline: none;
+  border-color: #2acf15;
+}
+
+.answer-input::-webkit-outer-spin-button,
+.answer-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.submit-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 15px 30px;
+  font-size: 1.2em;
+  font-weight: 700;
+  color: #ffffff;
+  background-color: #4a83d4;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  width: 250px;
+  height: 50px;
+  box-sizing: border-box;
+}
+
+.submit-button:hover:not(:disabled) {
+  background-color: #3a73c9;
+}
+
+.submit-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.attempts-display {
+  font-size: 1.2em;
+  color: black;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.quiz-summary {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: fadeIn 1s ease-out; /* 페이드인 애니메이션 */
+}
+
+.summary-title {
+  font-size: 2.5em;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.success-title {
+  color: #28a745;
+  animation: bounce 0.5s infinite alternate; /* 성공 시 바운스 애니메이션 */
+}
+
+.failed-title {
+  color: #dc3545;
+}
+
+.summary-text {
+  font-size: 1.5em;
+  color: #34495e;
+  margin-bottom: 10px;
+}
+
+.summary-score {
+  font-size: 2em;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 20px 0;
+  animation: pulse 1.5s infinite; /* 점수에 펄스 애니메이션 */
+}
+
+.restart-button {
+  /* 텍스트 가운데 정렬 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 15px 30px;
+  font-size: 1.2em;
+  font-weight: 700;
+  color: #ffffff;
+  background-color: #007bff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  width: 250px;
+  height: 50px;
+  box-sizing: border-box;
+  margin-top: 30px;
+}
+
+.restart-button:hover {
+  background-color: #0056b3;
+}
+
+/* 애니메이션 키프레임 */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-10px); }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}

@@ -1,0 +1,22 @@
+/* src/App.css */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
+
+html, body, #root, .app-container {
+  height: 100%;
+  margin: 0;
+  font-family: 'Noto Sans KR', sans-serif;
+  overflow: hidden; /* 전체 스크롤 방지 */
+}
+
+.app-container {
+  display: flex;
+  transition: transform 0.3s ease-in-out; /* 사이드바 애니메이션 */
+}
+
+.app-container.quiz-active .sidebar {
+  transform: translateX(-100%); /* 퀴즈 활성화 시 사이드바 숨김 */
+}
+
+.app-container.quiz-active .main-content {
+  width: 100%; /* 메인 콘텐츠가 전체 너비 차지 */
+}
