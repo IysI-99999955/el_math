@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/el_math/static/css/main.6e276854.css",
+    "main.js": "/el_math/static/js/main.568c094e.js",
+    "index.html": "/el_math/index.html",
+    "main.6e276854.css.map": "/el_math/static/css/main.6e276854.css.map",
+    "main.568c094e.js.map": "/el_math/static/js/main.568c094e.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.6e276854.css",
+    "static/js/main.568c094e.js"
+  ]
+}

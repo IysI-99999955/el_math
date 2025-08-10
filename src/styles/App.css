@@ -1,0 +1,70 @@
+/* src/styles/App.css */
+@import url('https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=Jua&display=swap');
+
+:root {
+  --vh: 1vh;
+}
+
+body, html, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100vh;
+  height: calc(var(--vh, 1vh) * 100);
+  overflow: hidden;
+  font-family: 'Jua', sans-serif;
+  background-color: #f0f4f8;
+  color: #333;
+}
+
+.app-container {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  height: calc(var(--vh, 1vh) * 100);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.main-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background-color: #f8f9fa;
+  box-shadow: inset 2px 0 5px rgba(0, 0, 0, 0.1);
+  transition: margin-left 0.3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.quiz-placeholder {
+  text-align: center;
+  padding: 20px;
+}
+
+.quiz-placeholder h1 {
+  font-family: 'Nanum Pen Script', cursive;
+  font-size: 3rem;
+  color: #2c3e50;
+  margin-bottom: 10px;
+}
+
+.quiz-placeholder p {
+  font-size: 1.2rem;
+  color: #7f8c8d;
+}
+
+@media (max-width: 768px) {
+  .app-container.quiz-active .sidebar {
+    transform: translateX(-100%);
+  }
+  .app-container .sidebar.open {
+    transform: translateX(0);
+  }
+  .main-content {
+    margin-left: 0;
+  }
+}
