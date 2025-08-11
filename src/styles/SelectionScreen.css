@@ -10,6 +10,8 @@
   padding: 20px;
   background-color: #f0f8ff;
   font-family: 'Jua', sans-serif;
+  /* 부모에서 스크롤이 생기지 않도록 방지 */
+  overflow: hidden; 
 }
 
 .selection-header {
@@ -21,6 +23,8 @@
   padding-bottom: 15px;
   margin-bottom: 20px;
   border-bottom: 2px solid #ddd;
+  /* 헤더는 스크롤되지 않도록 고정 */
+  flex-shrink: 0; 
 }
 
 .user-name {
@@ -47,6 +51,7 @@
   transform: rotate(90deg);
 }
 
+/* --- 여기가 핵심 수정 부분! --- */
 .selection-container {
   width: 100%;
   max-width: 800px;
@@ -56,8 +61,19 @@
   box-shadow: 0 5px 15px rgba(0,0,0,0.1);
   display: flex;
   flex-direction: column;
-  gap: 25px;
+  
+  /* 1. 스크롤 기능 추가 */
+  overflow-y: auto; /* 내용이 길어지면 자동으로 세로 스크롤바 생성 */
+  flex-grow: 1;     /* 남은 공간을 모두 차지하도록 설정 */
+  min-height: 0;    /* flexbox 스크롤 버그 방지 */
 }
+
+.menu-section {
+  /* 2. 섹션 간 여백 추가 */
+  margin-bottom: 25px; /* '1칸' 정도의 여백 */
+}
+/* --- 여기까지 --- */
+
 
 .selection-title {
   text-align: center;
@@ -109,6 +125,7 @@
   font-weight: bold;
 }
 
+/* --- 퀴즈 시작 버튼 여백 수정 --- */
 .start-quiz-button {
   width: 100%;
   padding: 18px;
@@ -120,7 +137,8 @@
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s;
-  margin-top: 20px;
+  /* 3. '2칸' 정도의 여백 추가 */
+  margin-top: 50px; 
 }
 
 .start-quiz-button:hover:not(:disabled) {
