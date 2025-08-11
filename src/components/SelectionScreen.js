@@ -2,7 +2,6 @@
 import React, { useEffect } from 'react';
 import { useQuiz } from '../contexts/QuizContext';
 import '../styles/SelectionScreen.css';
-// import { initializeAudio } from '../utils/audioPlayer'; // 이제 이 함수를 안 쓰니, 이 줄도 지워도 돼.
 
 const SelectionScreen = () => {
   const {
@@ -14,12 +13,6 @@ const SelectionScreen = () => {
   const grades = ['1학년', '2학년', '3학년', '4학년', '5학년', '6학년'];
   const levels = ['초급', '중급'];
   
-  useEffect(() => {
-    if (selectedLevel === '고급') {
-      setSelectedLevel('중급');
-    }
-  }, [selectedLevel, setSelectedLevel]);
-
   const getAvailableTypes = (grade) => {
     switch (grade) {
       case '1학년': return ['덧셈', '뺄셈'];
@@ -29,18 +22,44 @@ const SelectionScreen = () => {
   };
 
   const types = getAvailableTypes(selectedGrade);
+  const showRandomButton = ['4학년', '5학년', '6학년'].includes(selectedGrade);
+
+  // --- 여기가 핵심 수정 부분 (1번 해결) ---
+  const handleTypeChange = (type) => {
+    if (type === 'Random') {
+      setSelectedType(['Random']);
+      return;
+    }
+
+    // 'Random'이 아닌 다른 버튼을 눌렀을 때
+    const newSelection = new Set(selectedType.filter(t => t !== 'Random'));
+
+    if (newSelection.has(type)) {
+      newSelection.delete(type);
+    } else {
+      newSelection.add(type);
+    }
+
+    if (newSelection.size === 0) {
+      // 선택이 모두 해제되면 기본값으로 첫 번째 유형을 선택
+      setSelectedType([types[0]]);
+    } else {
+      setSelectedType(Array.from(newSelection));
+    }
+  };
   
   const handleSettingChange = (setting, value) => {
     switch(setting) {
       case 'grade':
         setSelectedGrade(value);
         const availableTypes = getAvailableTypes(value);
-        if (!availableTypes.includes(selectedType[0])) {
+        // 학년 변경 시, 선택된 유형이 유효하지 않으면 기본값으로 변경
+        const validTypes = selectedType.filter(t => availableTypes.includes(t) || t === 'Random');
+        if (validTypes.length === 0) {
           setSelectedType([availableTypes[0]]);
+        } else {
+          setSelectedType(validTypes);
         }
-        break;
-      case 'type':
-        setSelectedType([value]);
         break;
       case 'level':
         setSelectedLevel(value);
@@ -49,16 +68,11 @@ const SelectionScreen = () => {
     }
   };
 
-  // --- 여기가 핵심 수정 부분! ---
   const handleStartQuiz = () => {
     if (selectedGrade && selectedType.length > 0 && selectedLevel) {
-      // if (isSoundEnabled) {
-      //   initializeAudio(); // 이 줄을 삭제!
-      // }
       startNewQuiz();
     }
   };
-  // --- 여기까지 ---
 
   return (
     <div className="selection-screen">
@@ -85,10 +99,16 @@ const SelectionScreen = () => {
           <h3>유형 선택</h3>
           <div className="options-grid-dynamic">
             {types.map(type => (
-              <button key={type} className={`option-button ${selectedType.includes(type) ? 'active' : ''}`} onClick={() => handleSettingChange('type', type)}>
+              <button key={type} className={`option-button ${selectedType.includes(type) ? 'active' : ''}`} onClick={() => handleTypeChange(type)}>
                 {type}
               </button>
             ))}
+            {/* --- 여기가 핵심 수정 부분 (2번 해결) --- */}
+            {showRandomButton && (
+              <button className={`option-button ${selectedType.includes('Random') ? 'active' : ''}`} onClick={() => handleTypeChange('Random')}>
+                랜덤
+              </button>
+            )}
           </div>
         </div>
 

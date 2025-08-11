@@ -25,11 +25,18 @@
   "author": "ys",
   "license": "ISC",
   "dependencies": {
+    "@capacitor/android": "^7.4.2",
+    "@capacitor/cli": "^7.4.2",
+    "@capacitor/core": "^7.4.2",
+    "@capacitor/haptics": "^7.0.2",
+    "@capacitor/ios": "^7.4.2",
     "dexie": "^4.0.11",
+    "katex": "^0.16.22",
     "nth-check": "^2.0.1",
     "postcss": "^8.4.31",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-katex": "^3.1.0",
     "react-scripts": "5.0.1",
     "svgo": "^3.3.2"
   },

@@ -1,7 +1,12 @@
 // src/contexts/QuizContext.js
 import React, { createContext, useState, useCallback, useContext, useEffect } from 'react';
+// --- 여기가 진동 관련 수정 부분! ---
+import { Capacitor } from '@capacitor/core';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+// --- 여기까지 ---
 import { generateProblem } from '../utils/problemGenerator';
 import { playSound } from '../utils/audioPlayer';
+
 
 // ... (STORAGE_KEYS, QUIZ_LIMITS, safe... 함수들은 기존과 동일)
 const STORAGE_KEYS = {
@@ -61,11 +66,9 @@ const QuizContext = createContext();
 export const useQuiz = () => useContext(QuizContext);
 
 export const QuizProvider = ({ children }) => {
-  // appState에 'completion' 추가
-  const [appState, setAppState] = useState('loading'); // 'loading', 'login', 'selection', 'quiz', 'completion'
-  const [isQuizOver, setIsQuizOver] = useState(false); // 퀴즈 종료 상태를 별도로 관리
+  const [appState, setAppState] = useState('loading');
+  const [quizCompletionStatus, setQuizCompletionStatus] = useState(null); // 'success', 'failure' 또는 null
   
-  // ... (다른 상태 변수들은 기존과 동일)
   const [userName, setUserName] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -86,7 +89,6 @@ export const QuizProvider = ({ children }) => {
   const [quizHistoryList, setQuizHistoryList] = useState([]);
   const [showHistoryPopup, setShowHistoryPopup] = useState(false);
 
-  // ... (clearError, toggleSound, toggleHistoryPopup, login, logout 함수는 기존과 동일)
   const clearError = useCallback(() => setError(''), []);
   const toggleSound = useCallback(() => setIsSoundEnabled(prev => !prev), []);
   const toggleHistoryPopup = useCallback(() => setShowHistoryPopup(prev => !prev), []);
@@ -135,21 +137,19 @@ export const QuizProvider = ({ children }) => {
     setAppState('login');
   }, [rememberMe]);
 
-
-  // --- 여기가 핵심 수정 부분 (1번 버그 해결) ---
-  const endQuiz = useCallback(() => {
+  // --- 여기가 핵심 수정 부분 (5번 버그 해결) ---
+  const endQuiz = useCallback((status) => { // 'success' 또는 'failure' 상태를 받음
     setIsQuizActive(false);
-    setIsQuizOver(true); // 퀴즈가 끝났다고 '선언'만 함
+    setQuizCompletionStatus(status);
   }, []);
 
-  // isQuizOver 상태가 true로 바뀌면, 이 useEffect가 실행되어 안전하게 이력을 저장
   useEffect(() => {
-    if (isQuizOver) {
+    if (quizCompletionStatus) {
+      // 성공/실패 모두 이력은 저장
       const today = new Date().toISOString().split('T')[0];
       const allHistory = safeGetItem(STORAGE_KEYS.QUIZ_HISTORY_ALL_USERS, {});
       const userHistory = allHistory[userName] || [];
       
-      // 이 시점의 quizScore는 항상 최신 상태임
       const newRecord = {
         date: today,
         score: quizScore,
@@ -169,14 +169,17 @@ export const QuizProvider = ({ children }) => {
       safeSetItem(STORAGE_KEYS.QUIZ_HISTORY_ALL_USERS, allHistory);
       setQuizHistoryList(updatedHistory);
 
-      // 이력 저장 후, '완료' 화면으로 이동
-      setAppState('completion');
-      setIsQuizOver(false); // 다음 퀴즈를 위해 상태 초기화
+      // 상태에 따라 다른 화면으로 이동
+      if (quizCompletionStatus === 'success') {
+        setAppState('completion');
+      } else { // 'failure'
+        setAppState('selection');
+      }
+      setQuizCompletionStatus(null); // 다음 퀴즈를 위해 상태 초기화
     }
-  }, [isQuizOver, userName, quizScore, problems.length]);
+  }, [quizCompletionStatus, userName, quizScore, problems.length]);
   // --- 여기까지 ---
 
-  // 완료 화면에서 설정 화면으로 돌아가는 함수
   const returnToSelection = useCallback(() => {
     setAppState('selection');
   }, []);
@@ -188,13 +191,12 @@ export const QuizProvider = ({ children }) => {
       setIsCorrect(null);
       setCurrentAttempts(0);
     } else {
-      endQuiz(); // 마지막 문제면 퀴즈 종료
+      endQuiz('success'); // 모든 문제를 다 풀었으므로 '성공'
     }
   }, [currentProblemIndex, problems.length, endQuiz]);
 
   const startNewQuiz = useCallback(() => {
     setIsQuizActive(true);
-    // ... (기존과 동일)
     setCurrentProblemIndex(0);
     setUserAnswer('');
     setIsCorrect(null);
@@ -239,7 +241,7 @@ export const QuizProvider = ({ children }) => {
       if (newAttempts >= QUIZ_LIMITS.MAX_ATTEMPTS || isTimeout) {
         if (isSoundEnabled) playSound('incorrect');
         setProblemHistory(prev => [...prev, { ...problem, userAnswer: isTimeout ? '시간 초과' : userAnswer, isAnswerCorrect: false }]);
-        setTimeout(() => endQuiz(), 1500);
+        setTimeout(() => endQuiz('failure'), 1500); // 기회 소진/시간 초과 시 '실패'
       } else {
         setTimeout(() => {
           setIsCorrect(null);
@@ -249,7 +251,6 @@ export const QuizProvider = ({ children }) => {
     }
   }, [isQuizActive, isCorrect, problems, currentProblemIndex, userAnswer, currentAttempts, isSoundEnabled, endQuiz, nextProblem]);
 
-  // ... (앱 초기화 useEffect는 기존과 동일)
   useEffect(() => {
     const initializeApp = () => {
       const storedRememberMe = safeGetItem(STORAGE_KEYS.REMEMBER_ME, false);
@@ -279,7 +280,7 @@ export const QuizProvider = ({ children }) => {
     isSoundEnabled, toggleSound,
     quizHistoryList, showHistoryPopup, toggleHistoryPopup,
     endQuiz,
-    returnToSelection, // 새로 추가된 함수
+    returnToSelection,
   };
 
   return <QuizContext.Provider value={value}>{children}</QuizContext.Provider>;

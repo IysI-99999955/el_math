@@ -1,10 +1,13 @@
 // src/components/ProblemScreen.js
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuiz } from '../contexts/QuizContext';
+// --- 여기가 핵심 수정 부분! ---
+import 'katex/dist/katex.min.css'; // KaTeX CSS 불러오기
+import { InlineMath } from 'react-katex'; // KaTeX 컴포넌트 불러오기
+// --- 여기까지 ---
 import '../styles/ProblemScreen.css';
 
 const ProblemScreen = () => {
-  // ... (다른 부분은 기존과 동일)
   const {
     problems, currentProblemIndex, userAnswer, setUserAnswer,
     submitAnswer, isCorrect,
@@ -22,7 +25,7 @@ const ProblemScreen = () => {
     if (inputRef.current) {
       inputRef.current.focus();
     }
-  }, [currentProblemIndex]);
+  }, [currentProblemIndex, isCorrect]);
 
   useEffect(() => {
     if (isCorrect !== null) {
@@ -47,9 +50,8 @@ const ProblemScreen = () => {
     return () => clearInterval(timerRef.current);
   }, [currentProblemIndex, isCorrect, submitAnswer]);
 
-
   const handleInputChange = (e) => {
-    const value = e.target.value.replace(/[^0-9-]/g, '');
+    const value = e.target.value.replace(/[^0-9-./:]/g, '');
     setUserAnswer(value);
   };
 
@@ -88,28 +90,30 @@ const ProblemScreen = () => {
           </span>
         </div>
         <div className="problem-display">
-          <p className="problem-text" dangerouslySetInnerHTML={{ __html: currentProblem.question }} />
+          {/* --- 여기가 핵심 수정 부분! --- */}
+          {/* dangerouslySetInnerHTML 대신 InlineMath 컴포넌트 사용 */}
+          <div className="problem-text">
+            <InlineMath math={currentProblem.question} />
+          </div>
         </div>
         <div className="answer-section">
           <input
             id="answer-input"
             ref={inputRef}
             type="text"
-            inputMode="numeric"
-            pattern="[0-9:/.-]*"
+            inputMode="text"
+            pattern="[0-9./:-]*"
             value={userAnswer}
             onChange={handleInputChange}
             onKeyPress={handleKeyPress}
             className={`answer-input ${isCorrect === true ? 'correct' : ''} ${isCorrect === false ? 'incorrect' : ''}`}
             placeholder="정답을 입력하세요"
-            // --- 여기가 핵심 수정 부분 (3번 해결) ---
-            disabled={isCorrect === true} // 정답일 때만 비활성화
+            disabled={isCorrect === true}
             autoFocus
             maxLength={20}
           />
         </div>
         
-        {/* --- 여기가 핵심 수정 부분 (4번 해결) --- */}
         <div className="action-area">
           <div className="feedback">
             {isCorrect === true && <p className="feedback-correct">정답입니다! 🎉</p>}
