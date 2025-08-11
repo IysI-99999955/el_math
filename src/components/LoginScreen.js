@@ -45,7 +45,7 @@ const LoginScreen = () => {
       <div className="login-box">
         {/* 불필요한 텍스트는 모두 삭제 */}
         <h1 className="login-title">
-          <span className="brand-en">el Math</span> 수학 퀴즈!
+          <span className="brand-en">el Math</span> 퀴즈!
         </h1>
         <p className="login-subtitle">이름을 입력하고 신나는 퀴즈를 시작해봐요!</p>
         
