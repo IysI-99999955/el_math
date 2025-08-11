@@ -3,53 +3,28 @@ import React from 'react';
 import { useQuiz } from '../contexts/QuizContext';
 import LoginScreen from './LoginScreen';
 import ProblemScreen from './ProblemScreen';
+import LoginScreen from './LoginScreen';
+import SelectionScreen from './SelectionScreen'; // Sidebar 대신 사용
+import HistoryPopup from './HistoryPopup';
+import LoadingScreen from './LoadingScreen'; // 로딩 스크린 추가
 import '../styles/MainContent.css';
 
 const MainContent = () => {
-  const { 
-    isLoggedIn, 
-    isQuizActive, 
-    isQuizFinished, 
-    userName, 
-    dailyCompletedQuizzes, 
-    totalPossibleQuizzes, 
-    logoutUser 
-  } = useQuiz();
-
-  const handleLogout = () => {
-    logoutUser();
-  };
+  const { appState, showHistoryPopup } = useQuiz();
 
   const renderContent = () => {
-    if (!isLoggedIn) {
-      return <LoginScreen />;
+    switch (appState) {
+      case 'loading':
+        return <LoadingScreen />;
+      case 'login':
+        return <LoginScreen />;
+      case 'selection':
+        return <SelectionScreen />;
+      case 'quiz':
+        return <ProblemScreen />;
+      default:
+        return <LoginScreen />;
     }
-    
-    // 퀴즈 진행 중이거나 퀴즈가 완료된 상태 (축하 메시지 표시)
-    if (isQuizActive || isQuizFinished) {
-      return <ProblemScreen />;
-    }
-
-    // 로그인 후 퀴즈 시작 대기 상태 (사이드바에서 설정 및 시작)
-    return (
-      <div className="main-content-welcome">
-        <h2>수학 퀴즈를 시작해 보세요!</h2>
-        <p>사이드바에서 원하는 옵션을 선택하고 퀴즈를 시작해 주세요.</p>
-        <div className="selection-guide">
-          <ul className="selection-checklist">
-            <li>
-              학년: <span className={`selected-value`}>선택 안됨</span>
-            </li>
-            <li>
-              유형: <span className={`selected-value`}>선택 안됨</span>
-            </li>
-            <li>
-              난이도: <span className={`selected-value`}>선택 안됨</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -68,6 +43,7 @@ const MainContent = () => {
         </header>
       )}
       {renderContent()}
+      {showHistoryPopup && <HistoryPopup />}
     </main>
   );
 };

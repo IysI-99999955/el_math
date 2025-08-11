@@ -1,7 +1,7 @@
 {
   "name": "math-quiz-pwa",
   "version": "1.0.0",
-  "homepage": "https://iysi-99999955.github.io/el_math/",
+  "homepage": ".",
   "description": "초등학교 수학 퀴즈 앱",
   "main": "src/index.js",
   "scripts": {

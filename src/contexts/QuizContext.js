@@ -8,19 +8,19 @@ const QuizContext = createContext();
 const STORAGE_KEYS = {
   USER_NAME: 'math_quiz_user_name',
   REMEMBER_ME: 'math_quiz_remember_me',
-  USER_DATA_PREFIX: 'math_quiz_user_data_',
-  QUIZ_HISTORY: 'math_quiz_history',
+  QUIZ_HISTORY_ALL_USERS: 'math_quiz_history_all_users', // 모든 사용자 이력 저장 키
 };
 
 const QUIZ_LIMITS = {
-  DAILY_PROBLEM_COUNT: 50, // 1회 퀴즈당 문제 수
-  MAX_PROBLEM_ATTEMPTS: 5,
+  DAILY_PROBLEM_COUNT: 30,
   MIN_NAME_LENGTH: 2,
-  MAX_NAME_LENGTH: 20,
+  MAX_NAME_LENGTH: 10,
   DUPLICATE_NAMES: ['admin', 'test', 'guest'],
-  TOTAL_POSSIBLE_QUIZZES: 'α',
+  MAX_ATTEMPTS: 5,
+  MAX_RETRY_ATTEMPTS: 100,
 };
 
+// --- LocalStorage 유틸리티 함수들 (기존과 동일) ---
 const safeGetItem = (key, defaultValue) => {
   try {
     const item = localStorage.getItem(key);
@@ -33,10 +33,14 @@ const safeGetItem = (key, defaultValue) => {
 
 const safeSetItem = (key, value) => {
   try {
+    if (typeof localStorage === 'undefined') {
+      console.warn('localStorage not supported');
+      return false;
+    }
     localStorage.setItem(key, JSON.stringify(value));
     return true;
   } catch (error) {
-    console.warn(`Error setting item to localStorage for key "${key}":`, error);
+    console.error(`Error setting item to localStorage for key "${key}":`, error);
     return false;
   }
 };
@@ -57,307 +61,229 @@ const checkDailyReset = (userName) => {
   return false;
 };
 
-const getInitialQuizSettings = () => ({
-  grade: '1학년',
-  difficulty: '초급',
-  categories: ['덧셈'],
-});
+const generateProblemKey = (problem) => `${problem.question}-${problem.answer}`;
 
-const getInitialState = (initialUserName = null) => {
-  let userName = initialUserName;
-  let isLoggedIn = !!initialUserName;
-
-  if (isLoggedIn) {
-    checkDailyReset(userName);
-  } else {
-    userName = null;
-  }
-
-  const dailyCompletedQuizzes = isLoggedIn ? safeGetItem(getUserDataKey(userName, 'daily_completed_quizzes'), 0) : 0;
-  const solvedProblemCount = isLoggedIn ? safeGetItem(getUserDataKey(userName, 'solved_problem_count'), 0) : 0;
-  const quizSettings = isLoggedIn ? safeGetItem(getUserDataKey(userName, 'quiz_settings'), getInitialQuizSettings()) : getInitialQuizSettings();
-
-  return {
-    userName,
-    isLoggedIn,
-    isQuizActive: false,
-    isQuizFinished: false,
-    isQuizFailed: false,
-    selectedGrade: quizSettings.grade,
-    selectedType: quizSettings.categories,
-    selectedLevel: quizSettings.difficulty,
-    currentProblem: null,
-    problemHistory: [],
-    score: 0,
-    attempts: 0,
-    dailyCompletedQuizzes,
-    solvedProblemCount,
-    error: null,
-    isLoading: false,
-  };
-};
+const QuizContext = createContext();
+export const useQuiz = () => useContext(QuizContext);
 
 export const QuizProvider = ({ children }) => {
-  const [state, setState] = useState(() => {
-    const storedUserName = safeGetItem(STORAGE_KEYS.USER_NAME, null);
-    const rememberMe = safeGetItem(STORAGE_KEYS.REMEMBER_ME, false);
-    return getInitialState(rememberMe ? storedUserName : null);
-  });
+  // --- 상태(State) 정의 ---
+  const [appState, setAppState] = useState('loading'); // 'loading', 'login', 'selection', 'quiz'
+  const [userName, setUserName] = useState('');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
-  const updateState = useCallback((newState) => {
-    setState(prevState => ({ ...prevState, ...newState }));
-  }, []);
-  
-  const clearError = useCallback(() => {
-    updateState({ error: null });
-  }, [updateState]);
+  const [selectedGrade, setSelectedGrade] = useState('1학년');
+  const [selectedType, setSelectedType] = useState(['덧셈']);
+  const [selectedLevel, setSelectedLevel] = useState('초급');
 
-  const loginUser = useCallback(async (name, rememberMe) => {
-    updateState({ isLoading: true, error: null });
+  const [isQuizActive, setIsQuizActive] = useState(false);
+  const [problems, setProblems] = useState([]);
+  const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
+  const [userAnswer, setUserAnswer] = useState('');
+  const [isCorrect, setIsCorrect] = useState(null);
+  const [problemHistory, setProblemHistory] = useState([]);
+  const [quizScore, setQuizScore] = useState(0);
+  const [currentAttempts, setCurrentAttempts] = useState(0);
+
+  const [isSoundEnabled, setIsSoundEnabled] = useState(true);
+  const [quizHistoryList, setQuizHistoryList] = useState([]);
+  const [showHistoryPopup, setShowHistoryPopup] = useState(false);
+
+  // --- 함수 정의 (useCallback으로 최적화) ---
+  const clearError = useCallback(() => setError(''), []);
+  const toggleSound = useCallback(() => setIsSoundEnabled(prev => !prev), []);
+  const toggleHistoryPopup = useCallback(() => setShowHistoryPopup(prev => !prev), []);
+
+  const login = useCallback((name, remember) => {
+    setIsLoading(true);
+    setError('');
     const sanitizedName = name.trim();
 
-    if (!sanitizedName || typeof sanitizedName !== 'string') {
-      updateState({ error: '올바른 이름을 입력해주세요.', isLoading: false });
-      return false;
-    }
-    if (sanitizedName.length < QUIZ_LIMITS.MIN_NAME_LENGTH || sanitizedName.length > QUIZ_LIMITS.MAX_NAME_LENGTH) {
-      updateState({ error: `이름은 ${QUIZ_LIMITS.MIN_NAME_LENGTH}~${QUIZ_LIMITS.MAX_NAME_LENGTH}자여야 합니다.`, isLoading: false });
-      return false;
+    if (!sanitizedName || sanitizedName.length < QUIZ_LIMITS.MIN_NAME_LENGTH || sanitizedName.length > QUIZ_LIMITS.MAX_NAME_LENGTH) {
+      setError(`이름은 ${QUIZ_LIMITS.MIN_NAME_LENGTH}~${QUIZ_LIMITS.MAX_NAME_LENGTH}자 사이로 입력해주세요.`);
+      setIsLoading(false);
+      return;
     }
     if (QUIZ_LIMITS.DUPLICATE_NAMES.includes(sanitizedName.toLowerCase())) {
       updateState({ error: '사용자 이름을 확인하십시오.', isLoading: false });
       return false;
     }
 
-    try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-
+    setUserName(sanitizedName);
+    setIsLoggedIn(true);
+    setRememberMe(remember);
+    if (remember) {
       safeSetItem(STORAGE_KEYS.USER_NAME, sanitizedName);
-      safeSetItem(STORAGE_KEYS.REMEMBER_ME, rememberMe);
-
-      const newState = getInitialState(sanitizedName);
-      setState(newState);
-      return true;
-    } catch (err) {
-      updateState({ error: '로그인 중 오류가 발생했습니다.', isLoading: false });
-      return false;
+      safeSetItem(STORAGE_KEYS.REMEMBER_ME, true);
+    } else {
+      safeRemoveItem(STORAGE_KEYS.USER_NAME);
+      safeRemoveItem(STORAGE_KEYS.REMEMBER_ME);
     }
-  }, [updateState]);
+    
+    // 로그인한 사용자의 이력만 불러오기
+    const allHistory = safeGetItem(STORAGE_KEYS.QUIZ_HISTORY_ALL_USERS, {});
+    setQuizHistoryList(allHistory[sanitizedName] || []);
 
-  const logoutUser = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEYS.USER_NAME);
-    safeSetItem(STORAGE_KEYS.REMEMBER_ME, false);
-    setState(getInitialState(null));
+    setAppState('selection');
+    setIsLoading(false);
   }, []);
 
-  const setSelectedGrade = useCallback((grade) => {
-    updateState({ selectedGrade: grade });
-    const currentSettings = {
-      grade,
-      categories: state.selectedType,
-      difficulty: state.selectedLevel,
-    };
-    safeSetItem(getUserDataKey(state.userName, 'quiz_settings'), currentSettings);
-  }, [state.userName, state.selectedType, state.selectedLevel, updateState]);
-
-  const setSelectedType = useCallback((type) => {
-    updateState({ selectedType: type });
-    const currentSettings = {
-      grade: state.selectedGrade,
-      categories: type,
-      difficulty: state.selectedLevel,
-    };
-    safeSetItem(getUserDataKey(state.userName, 'quiz_settings'), currentSettings);
-  }, [state.userName, state.selectedGrade, state.selectedLevel, updateState]);
-
-  const setSelectedLevel = useCallback((level) => {
-    updateState({ selectedLevel: level });
-    const currentSettings = {
-      grade: state.selectedGrade,
-      categories: state.selectedType,
-      difficulty: level,
-    };
-    safeSetItem(getUserDataKey(state.userName, 'quiz_settings'), currentSettings);
-  }, [state.userName, state.selectedGrade, state.selectedType, updateState]);
-
-  const generateNewProblem = useCallback((currentProblemHistory, currentScore) => {
-    if (currentProblemHistory.length >= QUIZ_LIMITS.DAILY_PROBLEM_COUNT) {
-      updateState({ isQuizActive: false, isQuizFinished: true, currentProblem: null });
-      const historyEntry = {
-        userName: state.userName,
-        date: new Date().toLocaleDateString('ko-KR'),
-        time: new Date().toLocaleTimeString('ko-KR'),
-        course: {
-          grade: state.selectedGrade,
-          type: state.selectedType.join(', '),
-          level: state.selectedLevel,
-        },
-        problemsSolved: QUIZ_LIMITS.DAILY_PROBLEM_COUNT,
-        score: currentScore,
-      };
-      const existingHistory = safeGetItem(STORAGE_KEYS.QUIZ_HISTORY, []);
-      safeSetItem(STORAGE_KEYS.QUIZ_HISTORY, [...existingHistory, historyEntry]);
-
-      const newDailyCompleted = state.dailyCompletedQuizzes + 1;
-      safeSetItem(getUserDataKey(state.userName, 'daily_completed_quizzes'), newDailyCompleted);
-      updateState({ dailyCompletedQuizzes: newDailyCompleted });
-      return;
+  const logout = useCallback(() => {
+    setIsLoggedIn(false);
+    setUserName('');
+    // '이름 기억하기'가 체크 안됐을 때만 이름 제거
+    if (!rememberMe) {
+      safeRemoveItem(STORAGE_KEYS.USER_NAME);
     }
+    setIsQuizActive(false);
+    setAppState('login');
+  }, [rememberMe]);
 
-    const newProblem = generateProblem(state.selectedGrade, state.selectedType, state.selectedLevel, currentProblemHistory.length);
-    updateState({ currentProblem: newProblem, attempts: 0 });
-  }, [state.userName, state.selectedGrade, state.selectedType, state.selectedLevel, state.dailyCompletedQuizzes, updateState]);
+  const endQuiz = useCallback(() => {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD 형식
+    const allHistory = safeGetItem(STORAGE_KEYS.QUIZ_HISTORY_ALL_USERS, {});
+    const userHistory = allHistory[userName] || [];
 
-  const checkAnswer = useCallback((userAnswer) => {
-    if (!state.currentProblem) return;
-
-    const answerValue = parseInt(userAnswer, 10);
-    const isCorrect = answerValue === parseInt(state.currentProblem.answer, 10);
-
-    if (isCorrect) {
-      // 정답인 경우
-      playSound('correct'); // 정답 소리 재생
-      setState(prevState => {
-        const newScore = prevState.score + 1;
-        const newProblemHistory = [...prevState.problemHistory, { ...prevState.currentProblem, result: 'correct' }];
-        const newSolvedCount = prevState.solvedProblemCount + 1;
-        
-        safeSetItem(getUserDataKey(prevState.userName, 'solved_problem_count'), newSolvedCount);
-        
-        if (newProblemHistory.length >= QUIZ_LIMITS.DAILY_PROBLEM_COUNT) {
-          const historyEntry = {
-            userName: prevState.userName,
-            date: new Date().toLocaleDateString('ko-KR'),
-            time: new Date().toLocaleTimeString('ko-KR'),
-            course: {
-              grade: prevState.selectedGrade,
-              type: prevState.selectedType.join(', '),
-              level: prevState.selectedLevel,
-            },
-            problemsSolved: QUIZ_LIMITS.DAILY_PROBLEM_COUNT,
-            score: newScore,
-          };
-          const existingHistory = safeGetItem(STORAGE_KEYS.QUIZ_HISTORY, []);
-          safeSetItem(STORAGE_KEYS.QUIZ_HISTORY, [...existingHistory, historyEntry]);
-
-          const newDailyCompleted = prevState.dailyCompletedQuizzes + 1;
-          safeSetItem(getUserDataKey(prevState.userName, 'daily_completed_quizzes'), newDailyCompleted);
-          
-          return {
-            ...prevState,
-            score: newScore,
-            problemHistory: newProblemHistory,
-            solvedProblemCount: newSolvedCount,
-            dailyCompletedQuizzes: newDailyCompleted,
-            isQuizActive: false,
-            isQuizFinished: true,
-            currentProblem: null,
-            attempts: 0
-          };
-        } else {
-          const newProblem = generateProblem(
-            prevState.selectedGrade, 
-            prevState.selectedType, 
-            prevState.selectedLevel, 
-            newProblemHistory.length
-          );
-          
-          return {
-            ...prevState,
-            score: newScore,
-            problemHistory: newProblemHistory,
-            solvedProblemCount: newSolvedCount,
-            currentProblem: newProblem,
-            attempts: 0
-          };
-        }
-      });
+    const newRecord = {
+      date: today,
+      score: quizScore,
+      totalProblems: problems.length,
+    };
+    
+    // 오늘 날짜의 기록이 이미 있는지 확인
+    const todayIndex = userHistory.findIndex(record => record.date === today);
+    
+    let updatedHistory;
+    if (todayIndex > -1) {
+      // 있으면 기존 기록 업데이트
+      userHistory[todayIndex] = newRecord;
+      updatedHistory = [...userHistory];
     } else {
-      // 오답인 경우
-      playSound('incorrect'); // 오답 소리 재생
-      setState(prevState => {
-        const newAttempts = prevState.attempts + 1;
-        if (newAttempts >= QUIZ_LIMITS.MAX_PROBLEM_ATTEMPTS) {
-          alert(`문제풀이 실패! 초기 화면으로 돌아갑니다.`);
-          return {
-            ...prevState,
-            isQuizActive: false,
-            isQuizFinished: true,
-            isQuizFailed: true,
-            currentProblem: null,
-            attempts: 0,
-            score: 0,
-            problemHistory: []
-          };
-        }
-        return {
-          ...prevState,
-          attempts: newAttempts
-        };
-      });
+      // 없으면 새로 추가
+      updatedHistory = [newRecord, ...userHistory];
     }
-  }, [state.currentProblem, state.userName]);
+    
+    allHistory[userName] = updatedHistory;
+    safeSetItem(STORAGE_KEYS.QUIZ_HISTORY_ALL_USERS, allHistory);
+    setQuizHistoryList(updatedHistory);
+
+    // 상태 초기화 및 화면 전환
+    setIsQuizActive(false);
+    setAppState('selection');
+  }, [userName, quizScore, problems.length, problemHistory]);
+
+  const nextProblem = useCallback(() => {
+    if (currentProblemIndex + 1 < problems.length) {
+      setCurrentProblemIndex(prev => prev + 1);
+      setUserAnswer('');
+      setIsCorrect(null);
+      setCurrentAttempts(0);
+    } else {
+      endQuiz();
+    }
+  }, [currentProblemIndex, problems.length, endQuiz]);
 
   const startNewQuiz = useCallback(() => {
-    updateState({
-      isQuizStarted: true,
-      isQuizActive: true,
-      isQuizFinished: false,
-      isQuizFailed: false,
-      score: 0,
-      attempts: 0,
-      problemHistory: [],
-    });
-  }, [updateState]);
+    // 퀴즈 시작 전 모든 상태 초기화
+    setIsQuizActive(true);
+    setCurrentProblemIndex(0);
+    setUserAnswer('');
+    setIsCorrect(null);
+    setProblemHistory([]);
+    setQuizScore(0);
+    setCurrentAttempts(0);
 
-  useEffect(() => {
-    if (state.isQuizActive && !state.currentProblem && state.problemHistory.length === 0) {
-      const newProblem = generateProblem(state.selectedGrade, state.selectedType, state.selectedLevel, 0);
-      updateState({ currentProblem: newProblem, attempts: 0 });
+    const newProblems = [];
+    const generatedKeys = new Set();
+    let retryCount = 0;
+    while (newProblems.length < QUIZ_LIMITS.DAILY_PROBLEM_COUNT && retryCount < QUIZ_LIMITS.MAX_RETRY_ATTEMPTS) {
+      const problem = generateProblem(selectedGrade, selectedType, selectedLevel, newProblems.length);
+      const problemKey = generateProblemKey(problem);
+      if (!generatedKeys.has(problemKey)) {
+        newProblems.push(problem);
+        generatedKeys.add(problemKey);
+      }
+      retryCount++;
     }
-  }, [state.isQuizActive, state.currentProblem, state.problemHistory.length, state.selectedGrade, state.selectedType, state.selectedLevel, updateState]);
+    setProblems(newProblems);
+    setAppState('quiz');
+  }, [selectedGrade, selectedType, selectedLevel]);
 
-  const endQuizSession = useCallback(() => {
-    playSound('timeout'); // 타임아웃 소리 재생
-    updateState({ 
-      isQuizActive: false, 
-      isQuizFinished: true, 
-      currentProblem: null, 
-      attempts: 0, 
-      score: 0, 
-      problemHistory: [] 
-    });
-  }, [updateState]);
+  const submitAnswer = useCallback((isTimeout = false) => {
+    if (!isQuizActive || isCorrect !== null) return;
+
+    const problem = problems[currentProblemIndex];
+    if (!problem) return;
+
+    const isAnswerCorrect = problem.answer.toString().trim().toLowerCase() === userAnswer.trim().toLowerCase();
+
+    if (isAnswerCorrect) {
+      setIsCorrect(true);
+      setQuizScore(prev => prev + 1);
+      if (isSoundEnabled) playSound('correct');
+      setProblemHistory(prev => [...prev, { ...problem, userAnswer, isAnswerCorrect: true }]);
+      // 정답 시 1초 후 자동으로 다음 문제로
+      setTimeout(() => {
+        nextProblem();
+      }, 1000);
+    } else {
+      const newAttempts = currentAttempts + 1;
+      setCurrentAttempts(newAttempts);
+      setIsCorrect(false);
+
+      if (newAttempts >= QUIZ_LIMITS.MAX_ATTEMPTS || isTimeout) {
+        if (isSoundEnabled) playSound('incorrect');
+        setProblemHistory(prev => [...prev, { ...problem, userAnswer: isTimeout ? '시간 초과' : userAnswer, isAnswerCorrect: false }]);
+        // 퀴즈 강제 종료
+        setTimeout(() => {
+          endQuiz();
+        }, 1500);
+      } else {
+        // 오답 시 1초 후 다시 시도
+        setTimeout(() => {
+          setIsCorrect(null);
+          setUserAnswer('');
+        }, 1000);
+      }
+    }
+  }, [isQuizActive, isCorrect, problems, currentProblemIndex, userAnswer, currentAttempts, isSoundEnabled, endQuiz, nextProblem]);
+
+  // 앱 첫 로딩 시 실행
+  useEffect(() => {
+    const initializeApp = () => {
+      const storedRememberMe = safeGetItem(STORAGE_KEYS.REMEMBER_ME, false);
+      const storedName = storedRememberMe ? safeGetItem(STORAGE_KEYS.USER_NAME, '') : '';
+
+      if (storedName && storedRememberMe) {
+        setUserName(storedName);
+        setRememberMe(true);
+        setIsLoggedIn(true);
+        
+        const allHistory = safeGetItem(STORAGE_KEYS.QUIZ_HISTORY_ALL_USERS, {});
+        setQuizHistoryList(allHistory[storedName] || []);
+        
+        setAppState('selection');
+      } else {
+        setAppState('login');
+      }
+      setIsLoading(false);
+    };
+    initializeApp();
+  }, []);
 
   const value = {
-    ...state,
-    setSelectedGrade,
-    setSelectedType,
-    setSelectedLevel,
-    loginUser,
-    logoutUser,
-    startNewQuiz,
-    checkAnswer,
-    endQuizSession,
-    clearError,
-    TOTAL_PROBLEMS: QUIZ_LIMITS.DAILY_PROBLEM_COUNT,
-    QUIZ_LIMITS,
-    totalPossibleQuizzes: QUIZ_LIMITS.TOTAL_POSSIBLE_QUIZZES,
+    appState, userName, isLoggedIn, rememberMe, setRememberMe, login, logout, error, isLoading, clearError,
+    QUIZ_LIMITS, selectedGrade, setSelectedGrade, selectedType, setSelectedType,
+    selectedLevel, setSelectedLevel, startNewQuiz, isQuizActive, problems,
+    currentProblemIndex, userAnswer, setUserAnswer, isCorrect, submitAnswer,
+    nextProblem, problemHistory, quizScore, currentAttempts,
+    isSoundEnabled, toggleSound,
+    quizHistoryList, showHistoryPopup, toggleHistoryPopup,
+    endQuiz,
   };
 
-  return (
-    <QuizContext.Provider value={value}>
-      {children}
-    </QuizContext.Provider>
-  );
+  return <QuizContext.Provider value={value}>{children}</QuizContext.Provider>;
 };
-
-export const useQuiz = () => {
-  const context = useContext(QuizContext);
-  if (context === undefined) {
-    throw new Error('useQuiz must be used within a QuizProvider');
-  }
-  return context;
-};
-
-export { QuizContext };
