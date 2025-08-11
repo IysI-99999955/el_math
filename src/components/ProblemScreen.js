@@ -1,14 +1,14 @@
 // src/components/ProblemScreen.js
-import React, { useContext, useState, useEffect, useRef } from 'react';
-import { QuizContext } from '../contexts/QuizContext';
+import React, { useState, useEffect, useRef } from 'react';
+import { useQuiz } from '../contexts/QuizContext'; // useQuiz 훅 사용
 import '../styles/ProblemScreen.css';
 
 const ProblemScreen = () => {
   const {
     problems, currentProblemIndex, userAnswer, setUserAnswer,
-    submitAnswer, isCorrect, nextProblem,
-    currentAttempts, QUIZ_LIMITS, endQuiz
-  } = useQuiz();
+    submitAnswer, isCorrect,
+    currentAttempts, QUIZ_LIMITS
+  } = useQuiz(); // QuizContext 대신 useQuiz()로 한번에 가져오기
 
   const [timeLeft, setTimeLeft] = useState(10);
   const inputRef = useRef(null);
@@ -24,20 +24,19 @@ const ProblemScreen = () => {
   }, [currentProblemIndex]);
 
   useEffect(() => {
-    // 타이머 로직
-    if (isCorrect !== null) { // 정답/오답 판별이 끝났으면 타이머 중지
+    if (isCorrect !== null) {
       if (timerRef.current) clearInterval(timerRef.current);
       return;
     }
 
-    setTimeLeft(10); // 새 문제 시작 시 타이머 리셋
+    setTimeLeft(10);
     if (timerRef.current) clearInterval(timerRef.current);
 
     timerRef.current = setInterval(() => {
       setTimeLeft(prevTime => {
         if (prevTime <= 1) {
           clearInterval(timerRef.current);
-          submitAnswer(true); // 시간 초과로 제출
+          submitAnswer(true);
           return 0;
         }
         return prevTime - 1;
@@ -49,6 +48,7 @@ const ProblemScreen = () => {
 
 
   const handleInputChange = (e) => {
+    // 숫자와 하이픈(-)만 입력되도록 필터링
     const value = e.target.value.replace(/[^0-9-]/g, '');
     setUserAnswer(value);
   };
@@ -96,7 +96,7 @@ const ProblemScreen = () => {
             ref={inputRef}
             type="text"
             inputMode="numeric"
-            pattern="[0-9:/.]*"
+            pattern="[0-9:/.-]*" // 소수점도 허용하도록 패턴 수정
             value={userAnswer}
             onChange={handleInputChange}
             onKeyPress={handleKeyPress}
@@ -116,7 +116,6 @@ const ProblemScreen = () => {
             <p className="feedback-incorrect">모든 기회를 사용했습니다. 퀴즈를 종료합니다. 😢</p>
           )}
         </div>
-        {/* 정답을 맞히면 버튼이 보이지 않음 */}
         {isCorrect !== true && (
           <button
             type="button"

@@ -1,61 +1,53 @@
 /* src/styles/LoginScreen.css */
-/* 사용자 친화적인 손글씨 폰트 'Gaegu' 불러오기 */
 @import url('https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap');
 
-/* 화면 전체를 채우고 컨텐츠를 중앙 정렬하는 컨테이너 */
 .login-screen-container {
   display: flex;
   justify-content: center;
   align-items: center;
   width: 100%;
   height: 100%;
-  /* 따뜻하고 밝은 느낌의 그라데이션 배경 */
   background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
-  font-family: 'Gaegu', cursive; /* 로그인 화면 전체에 폰트 적용 */
+  font-family: 'Gaegu', cursive;
 }
 
-/* 중앙에 위치한 흰색 정보 박스 */
 .login-box {
   text-align: center;
   padding: 40px 50px;
-  /* 배경이 살짝 비치는 반투명 흰색으로 입체감 부여 */
   background-color: rgba(255, 255, 255, 0.95);
-  border-radius: 25px; /* 모서리를 부드럽게 */
+  border-radius: 25px;
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
   width: 90%;
   max-width: 450px;
 }
 
-/* 메인 타이틀 스타일 */
 .login-title {
   font-size: 3.2rem;
   font-weight: 700;
-  color: #ff6b6b; /* 따뜻한 빨간색 계열 */
+  color: #ff6b6b;
   margin-bottom: 10px;
   text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
 }
 
-/* 부제 스타일 (타이틀 아래 설명) */
 .login-subtitle {
   font-size: 1.3rem;
-  color: #576574; /* 차분한 회색 */
-  margin-bottom: 40px; /* 폼과의 간격을 넓게 */
+  color: #576574;
+  margin-bottom: 40px;
 }
 
-/* 폼 요소들을 세로로 정렬하고 간격 설정 */
 .login-form {
   display: flex;
+  flex-direction: column; /* 세로 정렬을 위해 추가! */
   align-items: center;
-  gap: 20px; /* 요소 사이의 간격 */
+  gap: 20px;
 }
 
-/* 이름 입력 필드를 감싸는 그룹 */
 .input-group {
   position: relative;
   width: 100%;
 }
 
-/* 이름 입력 필드 스타일 */
 .name-input {
   width: 100%;
   padding: 18px;
@@ -73,11 +65,10 @@
 
 .name-input:focus {
   outline: none;
-  border-color: #feca57; /* 노란색 계열로 포커스 표시 */
+  border-color: #feca57;
   box-shadow: 0 0 10px rgba(254, 202, 87, 0.5);
 }
 
-/* 글자 수 카운트 */
 .char-count {
   position: absolute;
   right: 15px;
@@ -87,7 +78,6 @@
   color: #c8d6e5;
 }
 
-/* '이름 기억하기' 체크박스 섹션 */
 .remember-me {
   display: flex;
   align-items: center;
@@ -96,14 +86,12 @@
   font-size: 1.1rem;
 }
 
-/* 에러 메시지 스타일 */
 .error-message {
   color: #e74c3c;
   font-size: 1rem;
   font-weight: bold;
 }
 
-/* 시작 버튼 스타일 */
 .start-button {
   width: 100%;
   padding: 18px;
@@ -111,7 +99,7 @@
   font-family: 'Gaegu', cursive;
   font-weight: 700;
   color: #ffffff;
-  background: linear-gradient(to right, #ff7e5f, #feb47b); /* 주황색 계열 그라데이션 */
+  background: linear-gradient(to right, #ff7e5f, #feb47b);
   border: none;
   border-radius: 15px;
   cursor: pointer;
@@ -130,12 +118,9 @@
   cursor: not-allowed;
 }
 
-/* 로고의 영어 부분 스타일 */
 .login-title .brand-en {
-  /* 다른 폰트를 써서 한글과 대비를 줌 */
-  font-family: 'Poppins', 'Noto Sans KR', sans-serif; /* 깔끔한 영문 폰트 */
+  font-family: 'Poppins', 'Noto Sans KR', sans-serif;
   font-weight: 700;
-  /* 색상에 살짝 변화를 줘서 강조 */
   color: #feca57; 
-  margin-right: 8px; /* '수학 퀴즈!' 와의 간격 */
+  margin-right: 8px;
 }

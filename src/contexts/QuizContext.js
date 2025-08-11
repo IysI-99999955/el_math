@@ -3,12 +3,10 @@ import React, { createContext, useState, useCallback, useContext, useEffect } fr
 import { generateProblem } from '../utils/problemGenerator';
 import { playSound } from '../utils/audioPlayer';
 
-const QuizContext = createContext();
-
 const STORAGE_KEYS = {
   USER_NAME: 'math_quiz_user_name',
   REMEMBER_ME: 'math_quiz_remember_me',
-  QUIZ_HISTORY_ALL_USERS: 'math_quiz_history_all_users', // 모든 사용자 이력 저장 키
+  QUIZ_HISTORY_ALL_USERS: 'math_quiz_history_all_users',
 };
 
 const QUIZ_LIMITS = {
@@ -20,11 +18,13 @@ const QUIZ_LIMITS = {
   MAX_RETRY_ATTEMPTS: 100,
 };
 
-// --- LocalStorage 유틸리티 함수들 (기존과 동일) ---
 const safeGetItem = (key, defaultValue) => {
   try {
+    if (typeof localStorage === 'undefined') return defaultValue;
     const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : defaultValue;
+    if (item === null || item === undefined) return defaultValue;
+    const parsedItem = JSON.parse(item);
+    return parsedItem !== null ? parsedItem : defaultValue;
   } catch (error) {
     console.warn(`Error getting item from localStorage for key "${key}":`, error);
     return defaultValue;
@@ -33,10 +33,7 @@ const safeGetItem = (key, defaultValue) => {
 
 const safeSetItem = (key, value) => {
   try {
-    if (typeof localStorage === 'undefined') {
-      console.warn('localStorage not supported');
-      return false;
-    }
+    if (typeof localStorage === 'undefined') return false;
     localStorage.setItem(key, JSON.stringify(value));
     return true;
   } catch (error) {
@@ -45,20 +42,15 @@ const safeSetItem = (key, value) => {
   }
 };
 
-const getUserDataKey = (userName, dataName) => `${STORAGE_KEYS.USER_DATA_PREFIX}${userName}_${dataName}`;
-
-const checkDailyReset = (userName) => {
-  const today = new Date().toDateString();
-  const lastResetDateKey = getUserDataKey(userName, 'last_reset_date');
-  const lastResetDate = safeGetItem(lastResetDateKey, null);
-
-  if (lastResetDate !== today) {
-    safeSetItem(getUserDataKey(userName, 'daily_completed_quizzes'), 0);
-    safeSetItem(getUserDataKey(userName, 'solved_problem_count'), 0);
-    safeSetItem(lastResetDateKey, today);
+const safeRemoveItem = (key) => {
+  try {
+    if (typeof localStorage === 'undefined') return false;
+    localStorage.removeItem(key);
     return true;
+  } catch (error) {
+    console.warn(`Error removing item from localStorage for key "${key}":`, error);
+    return false;
   }
-  return false;
 };
 
 const generateProblemKey = (problem) => `${problem.question}-${problem.answer}`;
@@ -67,18 +59,15 @@ const QuizContext = createContext();
 export const useQuiz = () => useContext(QuizContext);
 
 export const QuizProvider = ({ children }) => {
-  // --- 상태(State) 정의 ---
-  const [appState, setAppState] = useState('loading'); // 'loading', 'login', 'selection', 'quiz'
+  const [appState, setAppState] = useState('loading');
   const [userName, setUserName] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-
   const [selectedGrade, setSelectedGrade] = useState('1학년');
   const [selectedType, setSelectedType] = useState(['덧셈']);
   const [selectedLevel, setSelectedLevel] = useState('초급');
-
   const [isQuizActive, setIsQuizActive] = useState(false);
   const [problems, setProblems] = useState([]);
   const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
@@ -87,12 +76,10 @@ export const QuizProvider = ({ children }) => {
   const [problemHistory, setProblemHistory] = useState([]);
   const [quizScore, setQuizScore] = useState(0);
   const [currentAttempts, setCurrentAttempts] = useState(0);
-
   const [isSoundEnabled, setIsSoundEnabled] = useState(true);
   const [quizHistoryList, setQuizHistoryList] = useState([]);
   const [showHistoryPopup, setShowHistoryPopup] = useState(false);
 
-  // --- 함수 정의 (useCallback으로 최적화) ---
   const clearError = useCallback(() => setError(''), []);
   const toggleSound = useCallback(() => setIsSoundEnabled(prev => !prev), []);
   const toggleHistoryPopup = useCallback(() => setShowHistoryPopup(prev => !prev), []);
@@ -108,8 +95,9 @@ export const QuizProvider = ({ children }) => {
       return;
     }
     if (QUIZ_LIMITS.DUPLICATE_NAMES.includes(sanitizedName.toLowerCase())) {
-      updateState({ error: '사용자 이름을 확인하십시오.', isLoading: false });
-      return false;
+      setError('사용할 수 없는 이름입니다.');
+      setIsLoading(false);
+      return;
     }
 
     setUserName(sanitizedName);
@@ -123,7 +111,6 @@ export const QuizProvider = ({ children }) => {
       safeRemoveItem(STORAGE_KEYS.REMEMBER_ME);
     }
     
-    // 로그인한 사용자의 이력만 불러오기
     const allHistory = safeGetItem(STORAGE_KEYS.QUIZ_HISTORY_ALL_USERS, {});
     setQuizHistoryList(allHistory[sanitizedName] || []);
 
@@ -134,7 +121,6 @@ export const QuizProvider = ({ children }) => {
   const logout = useCallback(() => {
     setIsLoggedIn(false);
     setUserName('');
-    // '이름 기억하기'가 체크 안됐을 때만 이름 제거
     if (!rememberMe) {
       safeRemoveItem(STORAGE_KEYS.USER_NAME);
     }
@@ -143,7 +129,7 @@ export const QuizProvider = ({ children }) => {
   }, [rememberMe]);
 
   const endQuiz = useCallback(() => {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD 형식
+    const today = new Date().toISOString().split('T')[0];
     const allHistory = safeGetItem(STORAGE_KEYS.QUIZ_HISTORY_ALL_USERS, {});
     const userHistory = allHistory[userName] || [];
 
@@ -153,16 +139,13 @@ export const QuizProvider = ({ children }) => {
       totalProblems: problems.length,
     };
     
-    // 오늘 날짜의 기록이 이미 있는지 확인
     const todayIndex = userHistory.findIndex(record => record.date === today);
     
     let updatedHistory;
     if (todayIndex > -1) {
-      // 있으면 기존 기록 업데이트
       userHistory[todayIndex] = newRecord;
       updatedHistory = [...userHistory];
     } else {
-      // 없으면 새로 추가
       updatedHistory = [newRecord, ...userHistory];
     }
     
@@ -170,10 +153,9 @@ export const QuizProvider = ({ children }) => {
     safeSetItem(STORAGE_KEYS.QUIZ_HISTORY_ALL_USERS, allHistory);
     setQuizHistoryList(updatedHistory);
 
-    // 상태 초기화 및 화면 전환
     setIsQuizActive(false);
     setAppState('selection');
-  }, [userName, quizScore, problems.length, problemHistory]);
+  }, [userName, quizScore, problems.length]);
 
   const nextProblem = useCallback(() => {
     if (currentProblemIndex + 1 < problems.length) {
@@ -187,7 +169,6 @@ export const QuizProvider = ({ children }) => {
   }, [currentProblemIndex, problems.length, endQuiz]);
 
   const startNewQuiz = useCallback(() => {
-    // 퀴즈 시작 전 모든 상태 초기화
     setIsQuizActive(true);
     setCurrentProblemIndex(0);
     setUserAnswer('');
@@ -214,7 +195,6 @@ export const QuizProvider = ({ children }) => {
 
   const submitAnswer = useCallback((isTimeout = false) => {
     if (!isQuizActive || isCorrect !== null) return;
-
     const problem = problems[currentProblemIndex];
     if (!problem) return;
 
@@ -225,10 +205,7 @@ export const QuizProvider = ({ children }) => {
       setQuizScore(prev => prev + 1);
       if (isSoundEnabled) playSound('correct');
       setProblemHistory(prev => [...prev, { ...problem, userAnswer, isAnswerCorrect: true }]);
-      // 정답 시 1초 후 자동으로 다음 문제로
-      setTimeout(() => {
-        nextProblem();
-      }, 1000);
+      setTimeout(() => nextProblem(), 1000);
     } else {
       const newAttempts = currentAttempts + 1;
       setCurrentAttempts(newAttempts);
@@ -237,12 +214,8 @@ export const QuizProvider = ({ children }) => {
       if (newAttempts >= QUIZ_LIMITS.MAX_ATTEMPTS || isTimeout) {
         if (isSoundEnabled) playSound('incorrect');
         setProblemHistory(prev => [...prev, { ...problem, userAnswer: isTimeout ? '시간 초과' : userAnswer, isAnswerCorrect: false }]);
-        // 퀴즈 강제 종료
-        setTimeout(() => {
-          endQuiz();
-        }, 1500);
+        setTimeout(() => endQuiz(), 1500);
       } else {
-        // 오답 시 1초 후 다시 시도
         setTimeout(() => {
           setIsCorrect(null);
           setUserAnswer('');
@@ -251,7 +224,6 @@ export const QuizProvider = ({ children }) => {
     }
   }, [isQuizActive, isCorrect, problems, currentProblemIndex, userAnswer, currentAttempts, isSoundEnabled, endQuiz, nextProblem]);
 
-  // 앱 첫 로딩 시 실행
   useEffect(() => {
     const initializeApp = () => {
       const storedRememberMe = safeGetItem(STORAGE_KEYS.REMEMBER_ME, false);
@@ -261,10 +233,8 @@ export const QuizProvider = ({ children }) => {
         setUserName(storedName);
         setRememberMe(true);
         setIsLoggedIn(true);
-        
         const allHistory = safeGetItem(STORAGE_KEYS.QUIZ_HISTORY_ALL_USERS, {});
         setQuizHistoryList(allHistory[storedName] || []);
-        
         setAppState('selection');
       } else {
         setAppState('login');
