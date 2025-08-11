@@ -99,16 +99,29 @@
   box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
 }
 
-/* --- 여기가 핵심 수정 부분! --- */
+/* --- 여기가 핵심 수정 부분 (4번 해결) --- */
+.action-area {
+  /* 피드백과 버튼 영역의 공간을 미리 확보해서 레이아웃이 움직이는 것을 방지 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-height: 100px; /* 피드백(약 40px) + 버튼(약 60px) 높이를 고려한 최소 높이 */
+  justify-content: flex-start;
+}
+
 .feedback {
-  min-height: 30px; /* height를 min-height로 변경해서 내용이 길어져도 늘어날 수 있게 함 */
-  font-size: 1.3rem;  /* 버튼과 동일한 크기로 변경 */
+  min-height: 40px; /* 텍스트가 2줄이 되어도 충분한 높이 확보 */
+  font-size: 1.3rem;
   font-weight: bold;
   text-align: center;
-  /* 피드백 텍스트가 두 줄로 나뉘어도 자연스럽도록 line-height 추가 */
   line-height: 1.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 /* --- 여기까지 --- */
+
 
 .feedback-correct {
   color: #2ecc71;
@@ -130,6 +143,7 @@
   border-radius: 15px;
   cursor: pointer;
   transition: all 0.2s;
+  margin-top: 10px; /* 피드백과의 간격 */
 }
 
 .submit-button:hover:not(:disabled) {

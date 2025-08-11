@@ -6,6 +6,7 @@ import ProblemScreen from './ProblemScreen';
 import SelectionScreen from './SelectionScreen';
 import HistoryPopup from './HistoryPopup';
 import LoadingScreen from './LoadingScreen';
+import CompletionScreen from './CompletionScreen'; // 새로 추가
 import '../styles/MainContent.css';
 
 const MainContent = () => {
@@ -21,13 +22,14 @@ const MainContent = () => {
         return <SelectionScreen />;
       case 'quiz':
         return <ProblemScreen />;
+      case 'completion': // 새로 추가
+        return <CompletionScreen />;
       default:
         return <LoginScreen />;
     }
   };
 
   return (
-    // MainContent는 이제 순수하게 화면을 보여주는 '틀' 역할만 함
     <main className="main-content">
       {renderContent()}
       {showHistoryPopup && <HistoryPopup />}

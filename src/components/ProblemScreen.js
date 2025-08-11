@@ -1,14 +1,15 @@
 // src/components/ProblemScreen.js
 import React, { useState, useEffect, useRef } from 'react';
-import { useQuiz } from '../contexts/QuizContext'; // useQuiz 훅 사용
+import { useQuiz } from '../contexts/QuizContext';
 import '../styles/ProblemScreen.css';
 
 const ProblemScreen = () => {
+  // ... (다른 부분은 기존과 동일)
   const {
     problems, currentProblemIndex, userAnswer, setUserAnswer,
     submitAnswer, isCorrect,
     currentAttempts, QUIZ_LIMITS
-  } = useQuiz(); // QuizContext 대신 useQuiz()로 한번에 가져오기
+  } = useQuiz();
 
   const [timeLeft, setTimeLeft] = useState(10);
   const inputRef = useRef(null);
@@ -48,7 +49,6 @@ const ProblemScreen = () => {
 
 
   const handleInputChange = (e) => {
-    // 숫자와 하이픈(-)만 입력되도록 필터링
     const value = e.target.value.replace(/[^0-9-]/g, '');
     setUserAnswer(value);
   };
@@ -96,36 +96,41 @@ const ProblemScreen = () => {
             ref={inputRef}
             type="text"
             inputMode="numeric"
-            pattern="[0-9:/.-]*" // 소수점도 허용하도록 패턴 수정
+            pattern="[0-9:/.-]*"
             value={userAnswer}
             onChange={handleInputChange}
             onKeyPress={handleKeyPress}
             className={`answer-input ${isCorrect === true ? 'correct' : ''} ${isCorrect === false ? 'incorrect' : ''}`}
             placeholder="정답을 입력하세요"
-            disabled={isCorrect !== null}
+            // --- 여기가 핵심 수정 부분 (3번 해결) ---
+            disabled={isCorrect === true} // 정답일 때만 비활성화
             autoFocus
             maxLength={20}
           />
         </div>
-        <div className="feedback">
-          {isCorrect === true && <p className="feedback-correct">정답입니다! 🎉</p>}
-          {isCorrect === false && !isQuizOverDueToAttempts && (
-            <p className="feedback-incorrect">아쉽네요. 다시 시도해 보세요. (남은 기회: {QUIZ_LIMITS.MAX_ATTEMPTS - currentAttempts}회)</p>
-          )}
-          {isQuizOverDueToAttempts && (
-            <p className="feedback-incorrect">모든 기회를 사용했습니다. 퀴즈를 종료합니다. 😢</p>
+        
+        {/* --- 여기가 핵심 수정 부분 (4번 해결) --- */}
+        <div className="action-area">
+          <div className="feedback">
+            {isCorrect === true && <p className="feedback-correct">정답입니다! 🎉</p>}
+            {isCorrect === false && !isQuizOverDueToAttempts && (
+              <p className="feedback-incorrect">아쉽네요. 다시 시도해 보세요. (남은 기회: {QUIZ_LIMITS.MAX_ATTEMPTS - currentAttempts}회)</p>
+            )}
+            {isQuizOverDueToAttempts && (
+              <p className="feedback-incorrect">모든 기회를 사용했습니다. 퀴즈를 종료합니다. 😢</p>
+            )}
+          </div>
+          {isCorrect !== true && (
+            <button
+              type="button"
+              onClick={handleSubmitClick}
+              className="submit-button"
+              disabled={isCorrect !== null || userAnswer.trim() === ''}
+            >
+              정답 확인
+            </button>
           )}
         </div>
-        {isCorrect !== true && (
-          <button
-            type="button"
-            onClick={handleSubmitClick}
-            className="submit-button"
-            disabled={isCorrect !== null || userAnswer.trim() === ''}
-          >
-            정답 확인
-          </button>
-        )}
       </form>
     </div>
   );
