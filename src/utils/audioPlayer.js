@@ -1,8 +1,11 @@
 // src/utils/audioPlayer.js
 
+// 어떤 환경에서도 public 폴더의 경로를 정확히 찾도록 수정
+const getAudioPath = (filename) => `${process.env.PUBLIC_URL}/assets/${filename}`;
+
 const audioCache = {
-  correct: new Audio('/assets/dingdongdaeng.mp3'),
-  incorrect: new Audio('/assets/bbibbic.mp3'),
+  correct: new Audio(getAudioPath('dingdongdaeng.mp3')),
+  incorrect: new Audio(getAudioPath('bbibbic.mp3')),
 };
 
 let currentAudio = null;
@@ -12,11 +15,8 @@ Object.values(audioCache).forEach(audio => {
   audio.preload = 'auto';
 });
 
-
-// 브라우저의 자동재생 정책을 해결하기 위해 오디오를 초기화하는 함수
 export const initializeAudio = () => {
   console.log('Audio: Initializing...');
-  // 모든 오디오를 한번씩 재생 시도하고 바로 멈춰서 '재생 권한'을 얻음
   Object.values(audioCache).forEach(audio => {
     const playPromise = audio.play();
     if (playPromise !== undefined) {
@@ -24,13 +24,11 @@ export const initializeAudio = () => {
         audio.pause();
         audio.currentTime = 0;
       }).catch(error => {
-        // 사용자가 상호작용하기 전에는 이 에러가 뜨는게 정상이니 걱정 안해도 돼.
         console.log('Audio initialization requires user interaction.');
       });
     }
   });
 };
-// --- 여기까지 추가 ---
 
 export const playSound = (type) => {
   if (currentAudio && !currentAudio.ended) {

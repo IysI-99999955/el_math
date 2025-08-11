@@ -39,16 +39,17 @@ const LoginScreen = () => {
         <h1 className="login-title">
           <span className="brand-en">el Math</span> 퀴즈!
         </h1>
-        <p className="login-subtitle">이름을 입력하고 신나는 퀴즈를 시작해봐요!</p>
+        {/* --- 여기가 수정 부분! --- */}
+        <p className="login-subtitle">반가워! 이름 쓰고 퀴즈 풀자!</p>
         
         <form onSubmit={handleLogin} className="login-form">
           <div className="input-group">
             <input
-              className="name-input" // 클래스 추가
+              className="name-input"
               type="text"
               value={userNameInput}
               onChange={handleNameChange}
-              placeholder="여기에 이름을 써주세요" // placeholder 하나로 통일
+              placeholder="여기에 이름을 써주세요"
               disabled={isLoading}
               maxLength={QUIZ_LIMITS.MAX_NAME_LENGTH}
               aria-label="이름 입력"
@@ -63,7 +64,7 @@ const LoginScreen = () => {
           <div className="remember-me">
             <input
               type="checkbox"
-              id="remember-me-checkbox" // id 수정
+              id="remember-me-checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
             />
