@@ -1,8 +1,8 @@
 // src/components/SelectionScreen.js
 import React, { useEffect } from 'react';
 import { useQuiz } from '../contexts/QuizContext';
-import '../styles/SelectionScreen.css'; // 새로운 CSS 파일
-import { initializeAudio } from '../utils/audioPlayer';
+import '../styles/SelectionScreen.css';
+// import { initializeAudio } from '../utils/audioPlayer'; // 이제 이 함수를 안 쓰니, 이 줄도 지워도 돼.
 
 const SelectionScreen = () => {
   const {
@@ -49,14 +49,16 @@ const SelectionScreen = () => {
     }
   };
 
+  // --- 여기가 핵심 수정 부분! ---
   const handleStartQuiz = () => {
     if (selectedGrade && selectedType.length > 0 && selectedLevel) {
-      if (isSoundEnabled) {
-        initializeAudio();
-      }
+      // if (isSoundEnabled) {
+      //   initializeAudio(); // 이 줄을 삭제!
+      // }
       startNewQuiz();
     }
   };
+  // --- 여기까지 ---
 
   return (
     <div className="selection-screen">
