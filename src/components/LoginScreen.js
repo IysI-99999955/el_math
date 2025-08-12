@@ -39,8 +39,7 @@ const LoginScreen = () => {
         <h1 className="login-title">
           <span className="brand-en">el Math</span> 퀴즈!
         </h1>
-        {/* --- 여기가 수정 부분! --- */}
-        <p className="login-subtitle">반가워! 이름 쓰고 퀴즈 풀자!</p>
+        <p className="login-subtitle">반가워! 이름을 입력해줘!</p>
         
         <form onSubmit={handleLogin} className="login-form">
           <div className="input-group">

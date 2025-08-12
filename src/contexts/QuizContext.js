@@ -113,6 +113,7 @@ export const QuizProvider = ({ children }) => {
       safeSetItem(STORAGE_KEYS.USER_NAME, sanitizedName);
       safeSetItem(STORAGE_KEYS.REMEMBER_ME, true);
     } else {
+      // '이름 기억하기'가 체크 안됐으면, 혹시 모를 이전 기록을 지워줌
       safeRemoveItem(STORAGE_KEYS.USER_NAME);
       safeRemoveItem(STORAGE_KEYS.REMEMBER_ME);
     }
@@ -124,15 +125,22 @@ export const QuizProvider = ({ children }) => {
     setIsLoading(false);
   }, []);
 
+  // --- 여기가 핵심 수정 부분! ---
   const logout = useCallback(() => {
+    // 1. 현재 앱 상태를 로그아웃으로 변경
     setIsLoggedIn(false);
     setUserName('');
-    if (!rememberMe) {
-      safeRemoveItem(STORAGE_KEYS.USER_NAME);
-    }
+    setRememberMe(false); // rememberMe 상태도 초기화
+    
+    // 2. 조건 없이! 브라우저에 저장된 모든 로그인 정보를 깨끗하게 삭제
+    safeRemoveItem(STORAGE_KEYS.USER_NAME);
+    safeRemoveItem(STORAGE_KEYS.REMEMBER_ME);
+
+    // 3. 퀴즈 관련 상태도 초기화하고 로그인 화면으로 이동
     setIsQuizActive(false);
     setAppState('login');
-  }, [rememberMe]);
+  }, []); // 의존성 배열도 비워줌
+  // --- 여기까지 ---
 
   const endQuiz = useCallback((status) => {
     setIsQuizActive(false);
@@ -239,9 +247,7 @@ export const QuizProvider = ({ children }) => {
       if (newAttempts >= QUIZ_LIMITS.MAX_ATTEMPTS || isTimeout) {
         if (isSoundEnabled) playSound('incorrect');
         setProblemHistory(prev => [...prev, { ...problem, userAnswer: isTimeout ? '시간 초과' : userAnswer, isAnswerCorrect: false }]);
-        // --- 여기가 핵심! ---
-        // setTimeout(() => endQuiz('failure'), 1500); // 이 줄을 삭제!
-        // 이제 화면 전환은 ProblemScreen의 '확인' 버튼이 책임짐
+        // setTimeout(() => endQuiz('failure'), 1500); // 이 부분은 이전 수정에서 이미 삭제됨
       } else {
         setTimeout(() => {
           setIsCorrect(null);
