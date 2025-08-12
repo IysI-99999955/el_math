@@ -1,17 +1,16 @@
 // src/components/ProblemScreen.js
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuiz } from '../contexts/QuizContext';
-// --- 여기가 핵심 수정 부분! ---
-import 'katex/dist/katex.min.css'; // KaTeX CSS 불러오기
-import { InlineMath } from 'react-katex'; // KaTeX 컴포넌트 불러오기
-// --- 여기까지 ---
+import 'katex/dist/katex.min.css';
+import { InlineMath } from 'react-katex';
 import '../styles/ProblemScreen.css';
 
 const ProblemScreen = () => {
   const {
     problems, currentProblemIndex, userAnswer, setUserAnswer,
     submitAnswer, isCorrect,
-    currentAttempts, QUIZ_LIMITS
+    currentAttempts, QUIZ_LIMITS,
+    endQuiz // endQuiz 함수를 가져옴
   } = useQuiz();
 
   const [timeLeft, setTimeLeft] = useState(10);
@@ -21,14 +20,20 @@ const ProblemScreen = () => {
   const currentProblem = problems?.[currentProblemIndex];
   const totalProblems = problems?.length || 0;
 
-  useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [currentProblemIndex, isCorrect]);
+  // --- 여기가 핵심! ---
+  // 퀴즈가 실패로 끝났는지 여부를 판단하는 변수
+  const isQuizFailed = (currentAttempts >= QUIZ_LIMITS.MAX_ATTEMPTS || timeLeft === 0) && isCorrect === false;
 
   useEffect(() => {
-    if (isCorrect !== null) {
+    // 퀴즈가 실패 상태가 아닐 때만 포커스를 줌
+    if (inputRef.current && !isQuizFailed) {
+      inputRef.current.focus();
+    }
+  }, [currentProblemIndex, isCorrect, isQuizFailed]);
+
+  useEffect(() => {
+    // 퀴즈가 실패했거나, 정답/오답 판정이 끝났으면 타이머 중지
+    if (isQuizFailed || isCorrect !== null) {
       if (timerRef.current) clearInterval(timerRef.current);
       return;
     }
@@ -40,7 +45,7 @@ const ProblemScreen = () => {
       setTimeLeft(prevTime => {
         if (prevTime <= 1) {
           clearInterval(timerRef.current);
-          submitAnswer(true);
+          submitAnswer(true); // 시간 초과로 제출
           return 0;
         }
         return prevTime - 1;
@@ -48,7 +53,7 @@ const ProblemScreen = () => {
     }, 1000);
 
     return () => clearInterval(timerRef.current);
-  }, [currentProblemIndex, isCorrect, submitAnswer]);
+  }, [currentProblemIndex, isCorrect, submitAnswer, isQuizFailed]);
 
   const handleInputChange = (e) => {
     const value = e.target.value.replace(/[^0-9-./:]/g, '');
@@ -76,8 +81,6 @@ const ProblemScreen = () => {
     );
   }
 
-  const isQuizOverDueToAttempts = currentAttempts >= QUIZ_LIMITS.MAX_ATTEMPTS;
-
   return (
     <div className="problem-screen-container">
       <form className="problem-form" onSubmit={(e) => e.preventDefault()}>
@@ -90,8 +93,6 @@ const ProblemScreen = () => {
           </span>
         </div>
         <div className="problem-display">
-          {/* --- 여기가 핵심 수정 부분! --- */}
-          {/* dangerouslySetInnerHTML 대신 InlineMath 컴포넌트 사용 */}
           <div className="problem-text">
             <InlineMath math={currentProblem.question} />
           </div>
@@ -108,7 +109,8 @@ const ProblemScreen = () => {
             onKeyPress={handleKeyPress}
             className={`answer-input ${isCorrect === true ? 'correct' : ''} ${isCorrect === false ? 'incorrect' : ''}`}
             placeholder="정답을 입력하세요"
-            disabled={isCorrect === true}
+            // 퀴즈가 실패했거나, 정답을 맞혔을 때 비활성화
+            disabled={isQuizFailed || isCorrect === true}
             autoFocus
             maxLength={20}
           />
@@ -117,22 +119,36 @@ const ProblemScreen = () => {
         <div className="action-area">
           <div className="feedback">
             {isCorrect === true && <p className="feedback-correct">정답입니다! 🎉</p>}
-            {isCorrect === false && !isQuizOverDueToAttempts && (
+            {isCorrect === false && !isQuizFailed && (
               <p className="feedback-incorrect">아쉽네요. 다시 시도해 보세요. (남은 기회: {QUIZ_LIMITS.MAX_ATTEMPTS - currentAttempts}회)</p>
             )}
-            {isQuizOverDueToAttempts && (
-              <p className="feedback-incorrect">모든 기회를 사용했습니다. 퀴즈를 종료합니다. 😢</p>
+            {isQuizFailed && (
+              <p className="feedback-incorrect">퀴즈가 종료되었습니다. 😢</p>
             )}
           </div>
-          {isCorrect !== true && (
+
+          {/* --- 여기가 핵심! --- */}
+          {/* 퀴즈가 실패했을 때 '확인' 버튼을 보여줌 */}
+          {isQuizFailed ? (
             <button
               type="button"
-              onClick={handleSubmitClick}
+              onClick={() => endQuiz('failure')}
               className="submit-button"
-              disabled={isCorrect !== null || userAnswer.trim() === ''}
             >
-              정답 확인
+              확인
             </button>
+          ) : (
+            // 그 외의 경우 (정답 맞히기 전)
+            isCorrect !== true && (
+              <button
+                type="button"
+                onClick={handleSubmitClick}
+                className="submit-button"
+                disabled={isCorrect !== null || userAnswer.trim() === ''}
+              >
+                정답 확인
+              </button>
+            )
           )}
         </div>
       </form>

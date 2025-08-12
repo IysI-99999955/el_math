@@ -1,14 +1,11 @@
 // src/contexts/QuizContext.js
 import React, { createContext, useState, useCallback, useContext, useEffect } from 'react';
-// --- 여기가 진동 관련 수정 부분! ---
 import { Capacitor } from '@capacitor/core';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
-// --- 여기까지 ---
 import { generateProblem } from '../utils/problemGenerator';
 import { playSound } from '../utils/audioPlayer';
 
-
-// ... (STORAGE_KEYS, QUIZ_LIMITS, safe... 함수들은 기존과 동일)
+// ... (다른 코드는 기존과 동일)
 const STORAGE_KEYS = {
   USER_NAME: 'math_quiz_user_name',
   REMEMBER_ME: 'math_quiz_remember_me',
@@ -67,7 +64,7 @@ export const useQuiz = () => useContext(QuizContext);
 
 export const QuizProvider = ({ children }) => {
   const [appState, setAppState] = useState('loading');
-  const [quizCompletionStatus, setQuizCompletionStatus] = useState(null); // 'success', 'failure' 또는 null
+  const [quizCompletionStatus, setQuizCompletionStatus] = useState(null);
   
   const [userName, setUserName] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -137,15 +134,13 @@ export const QuizProvider = ({ children }) => {
     setAppState('login');
   }, [rememberMe]);
 
-  // --- 여기가 핵심 수정 부분 (5번 버그 해결) ---
-  const endQuiz = useCallback((status) => { // 'success' 또는 'failure' 상태를 받음
+  const endQuiz = useCallback((status) => {
     setIsQuizActive(false);
     setQuizCompletionStatus(status);
   }, []);
 
   useEffect(() => {
     if (quizCompletionStatus) {
-      // 성공/실패 모두 이력은 저장
       const today = new Date().toISOString().split('T')[0];
       const allHistory = safeGetItem(STORAGE_KEYS.QUIZ_HISTORY_ALL_USERS, {});
       const userHistory = allHistory[userName] || [];
@@ -169,16 +164,14 @@ export const QuizProvider = ({ children }) => {
       safeSetItem(STORAGE_KEYS.QUIZ_HISTORY_ALL_USERS, allHistory);
       setQuizHistoryList(updatedHistory);
 
-      // 상태에 따라 다른 화면으로 이동
       if (quizCompletionStatus === 'success') {
         setAppState('completion');
-      } else { // 'failure'
+      } else {
         setAppState('selection');
       }
-      setQuizCompletionStatus(null); // 다음 퀴즈를 위해 상태 초기화
+      setQuizCompletionStatus(null);
     }
   }, [quizCompletionStatus, userName, quizScore, problems.length]);
-  // --- 여기까지 ---
 
   const returnToSelection = useCallback(() => {
     setAppState('selection');
@@ -191,7 +184,7 @@ export const QuizProvider = ({ children }) => {
       setIsCorrect(null);
       setCurrentAttempts(0);
     } else {
-      endQuiz('success'); // 모든 문제를 다 풀었으므로 '성공'
+      endQuiz('success');
     }
   }, [currentProblemIndex, problems.length, endQuiz]);
 
@@ -231,6 +224,11 @@ export const QuizProvider = ({ children }) => {
       setIsCorrect(true);
       setQuizScore(prev => prev + 1);
       if (isSoundEnabled) playSound('correct');
+      
+      if (Capacitor.isNativePlatform()) {
+        Haptics.impact({ style: ImpactStyle.Light });
+      }
+
       setProblemHistory(prev => [...prev, { ...problem, userAnswer, isAnswerCorrect: true }]);
       setTimeout(() => nextProblem(), 1000);
     } else {
@@ -241,7 +239,9 @@ export const QuizProvider = ({ children }) => {
       if (newAttempts >= QUIZ_LIMITS.MAX_ATTEMPTS || isTimeout) {
         if (isSoundEnabled) playSound('incorrect');
         setProblemHistory(prev => [...prev, { ...problem, userAnswer: isTimeout ? '시간 초과' : userAnswer, isAnswerCorrect: false }]);
-        setTimeout(() => endQuiz('failure'), 1500); // 기회 소진/시간 초과 시 '실패'
+        // --- 여기가 핵심! ---
+        // setTimeout(() => endQuiz('failure'), 1500); // 이 줄을 삭제!
+        // 이제 화면 전환은 ProblemScreen의 '확인' 버튼이 책임짐
       } else {
         setTimeout(() => {
           setIsCorrect(null);
